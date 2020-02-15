@@ -102,6 +102,8 @@ public abstract class APartGun extends APart<EntityVehicleE_Powered> implements 
 	@Override
 	public void updatePart(){
 		super.updatePart();
+		Vec3d parentRotation = Vec3d.ZERO;
+		if(this.parentPart != null) parentRotation = this.parentPart.getActionRotation(0);
 		//Before we do any logic, check to make sure the player is still seated in the gunner seat.
 		//It it quite possible they could dismount with their hands on the trigger, so we need to be sure we check.
 		//Otherwise, guns could be set to fire and the player could just run away...
@@ -175,8 +177,8 @@ public abstract class APartGun extends APart<EntityVehicleE_Powered> implements 
 				//Pitch and yaw are relative to the vehicle, so use those.
 				//When we do yaw, make sure we do calculations with positive values.
 				//Both the vehicle and the player can have yaw greater than 360.
-				double deltaPitch = playerController.rotationPitch - vehicle.rotationPitch;
-				double deltaYaw = (playerController.rotationYaw%360 + 360)%360 - (vehicle.rotationYaw%360 - partRotation.y + 360)%360;
+				double deltaPitch = playerController.rotationPitch - vehicle.rotationPitch - parentRotation.x;
+				double deltaYaw = (playerController.rotationYaw%360 + 360)%360 - (vehicle.rotationYaw%360 + parentRotation.y - partRotation.y + 360)%360;
 				if(deltaPitch < currentPitch && currentPitch > getMinPitch()){
 					currentPitch -= Math.min(anglePerTickSpeed, currentPitch - deltaPitch);
 				}else if(deltaPitch > currentPitch && currentPitch < getMaxPitch()){
@@ -235,13 +237,15 @@ public abstract class APartGun extends APart<EntityVehicleE_Powered> implements 
 	@Override
 	@SideOnly(Side.CLIENT)
 	public void spawnParticles(){
+		Vec3d parentRotation = Vec3d.ZERO;
+		if(this.parentPart != null) parentRotation = this.parentPart.getActionRotation(0);
 		if(lastTickToFire != lastTickFired){
 			//Fire a bullet by spawning it with the appropriate muzzle velocity and angle.
 			//Angle is based on rotation of the vehicle, gun, and gun mount.
 			//Set the trajectory of the bullet.
 			//Add a slight fudge-factor to the bullet's trajectory depending on the barrel length and shell size.
-			float bulletYaw = (float) (vehicle.rotationYaw - partRotation.y + currentYaw + (Math.random() - 0.5F)*(10*definition.gun.diameter/(definition.gun.length*1000)));
-			float bulletPitch = (float) (vehicle.rotationPitch + partRotation.x + currentPitch + (Math.random() - 0.5F)*(10*definition.gun.diameter/(definition.gun.length*1000)));
+			float bulletYaw = (float) (vehicle.rotationYaw - partRotation.y + parentRotation.y + currentYaw + (Math.random() - 0.5F)*(10*definition.gun.diameter/(definition.gun.length*1000)));
+			float bulletPitch = (float) (vehicle.rotationPitch + partRotation.x + parentRotation.x + currentPitch + (Math.random() - 0.5F)*(10*definition.gun.diameter/(definition.gun.length*1000)));
 			
 			//Set initial velocity to the gun muzzle velocity times the speedFactor.
 			//We bring in the code for vectors here to make the velocity calculations easier.
